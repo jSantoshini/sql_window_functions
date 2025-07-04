@@ -1,0 +1,158 @@
+example for widow function - https://www.youtube.com/watch?v=Ww71knvhQ-s&t=338s 
+
+we have employee table:
+columns name 
+emp_id,emp_name,dept_name,salary
+
+here i need maximum salary for each department 
+
+> select dept_name,max(salary) as max_salary from employee group by dept_name
+
+by this we can extract maximum salary from each department.
+
+if we want other columns to be displayed here so we can use with, or subquery but better way to use this is by using window functions.
+
+> select e.* 
+  max(salary) over() as max_salary
+  from employee e
+  
+  by using above we get all the columns with new column as max_salary from all the records, 
+  by using over max function will acts as an window function unlike aggregation function 
+  
+> select e.* 
+  max(salary) over(partition by dept_name) as max_salary
+  from employee e
+  
+  here partition by used same like group by
+  
+  >row_number()
+  
+  select e.*,
+  row_number() over() as rn
+  from employee e;
+  
+  here one extra row will be created and given the numbers from 1 
+  
+  select e.*,
+  row_number() over(partition by dept_name) as rn
+  from employee e
+  
+  here the row numbers will be given as per dept names
+  
+> Fetch the first 2 emplyees from each department to join the company
+
+	
+  select * from (select e.*,
+  row_number() over(partition by dept_name order by emp_id) as rn
+  from employee e) x
+  where x.rn < 3
+  
+> Fetch Top 3 employees in each department the max salary 
+ rank() - it will skip the number if both the values are same (ex: 1,2,2,4)
+ 
+ select * from
+ (select e.*,
+ rank() over(partition by dept_name order by salary desc) as rnk
+ from employee e) x
+ where x.rnk < 4;
+ 
+> dense_rank - it will give the same numer to same value, but it will not skip the next number(1,2,2,3)
+	
+ select * from
+ (select e.*,
+ dense_rank() over(partition by dept_name order by salary desc) as dense_rnk
+ from employee e) x
+ where x.rnk < 4;
+ 
+>lead(), lag()
+  
+  --fetch a query to display if the salary of an employee is higher, lower or equal to the previous employee.
+  
+  
+	select e.*,
+	lag(salary) over(partition by dept_name order by salary desc) as dense_rnk
+	from employee e)
+	
+	lag(salary,2,0) - check with the previous 2 values, 0 is where we get null replace with 0
+	
+> first_value , last_value https://www.youtube.com/watch?v=zAmJPdZu8Rg&t=141s
+
+ - write query to displaythe most expensive product under each category 
+ 
+		select *,
+		first_value(product_name) over(partition by Product_category order by price desc) as most_exp_product
+		from Product;
+		
+ - write query to displaythe least expensive product under each category 
+ 
+		select *,
+		last_value(product_name) over(partition by Product_category order by price desc
+		range between unbounded preceeding and current row) as least_exp_product
+		from Product; 
+		- default frame work will be taken by SQL so here last_ value will not come as output to get the output correctly we need to change framework
+		
+		select *,
+		last_value(product_name) over(partition by Product_category order by price desc
+		range between unbounded preceeding and unbounded following) as least_exp_product
+		from Product; 
+	
+---over cluase repeating in window function
+
+select *,
+		first_value(product_name) over(partition by Product_category order by price desc) as most_exp_product,
+		last_value(product_name) over(partition by Product_category order by price desc
+		range between unbounded preceeding and unbounded following) as least_exp_product
+		
+from Product; 
+
+> use alternative to use window functions repeatedly below is the alternative way for above
+ 
+select *,
+		first_value(product_name) over w as most_exp_product,
+		last_value(product_name) over w as least_exp_product
+		
+from Product
+window w as (partition by Product_category order by price desc
+		range between unbounded preceeding and unbounded following);
+		
+		
+>Nth value: 
+it will fetch the value from any particular position that we specified 
+-- write query to dispaly the second most expensive product under each category
+select *,
+		first_value(product_name) over w as most_exp_product,
+		last_value(product_name) over w as least_exp_product,
+		nth_value(product_name,2) over w as second_most_exp_product
+		
+from Product
+window w as (partition by Product_category order by price desc
+		range between unbounded preceeding and unbounded following);
+		
+>NTILE - it give into buckets
+-- write a query to segregate all the expensive phones, mid range phones, and the cheaper phones
+select product_name,
+case when x.buckets = 1 then 'expensive phones'
+	 when x.buckets = 2 then 'midrange phones'
+	 else 'low range phones'
+	 end as phone_category
+from(
+select *,
+ntile(3) over (order by price desc) as buckets
+from Product
+where product_category = 'Phone') x
+
+-- it will divide into 3 buckets
+
+> cume_dist (cumulative distribution)
+ value is between 1 and 0
+ -- query to fetch alll products which are constituting the first 30% of the data in 
+ products table based on price
+ SELECT PRODUCT_NAME,
+ select *,
+ CUME_DIST() OVER(ORDER BY PRICE DESC) AS CUME_DISTRIBUTION
+ 
+ from products - IGNOR THIS
+
+>PERCENT_RANK 
+ 
+ 
